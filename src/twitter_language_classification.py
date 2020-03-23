@@ -19,7 +19,7 @@ def executeNaiveBayesClassification(V, n, gamma, training, testing):
     twitter_posts = processTrainingData(training)
 
     if n == 1:
-        executeUnigram(V, gamma, twitter_posts, testing)
+        executeUnigram(V, gamma, n, twitter_posts, testing)
 
     if n == 2:
         # implement executeBigram()
@@ -33,7 +33,7 @@ def executeNaiveBayesClassification(V, n, gamma, training, testing):
 
 
 # Character Unigram Models
-def executeUnigram(V, gamma, training, testing):
+def executeUnigram(V, gamma, n, training, testing):
 
     testingData = processTestinggData(testing)
 
@@ -44,7 +44,7 @@ def executeUnigram(V, gamma, training, testing):
         language, probability = detectTweetLanguage(
             V, gamma, twitterPost, eu_f, ca_f, gl_f, es_f, en_f, pt_f
         )
-        writeToTraceFile(twitterPost, language, probability, V, 1, gamma)
+        writeToTraceFile(twitterPost, language, probability, V, n, gamma)
 
 
 # fetch and stores training data in list
