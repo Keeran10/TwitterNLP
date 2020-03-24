@@ -47,7 +47,7 @@ def executeUnigram(V, gamma, n, training, testing):
         writeToTraceFile(twitterPost, language, probability, V, n, gamma)
 
 
-# fetch and stores training data in list
+# fetch and stores training/testing data in list
 def processData(file_path):
     data = []
     with open(file_path, "r", encoding="utf8") as f:
