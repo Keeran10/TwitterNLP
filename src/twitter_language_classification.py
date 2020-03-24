@@ -16,7 +16,7 @@ class TwitterPost:
 # Serves as an interface to call appropriate models
 def executeNaiveBayesClassification(V, n, gamma, training, testing):
 
-    twitter_posts = processTrainingData(training)
+    twitter_posts = processData(training)
 
     if n == 1:
         executeUnigram(V, gamma, n, twitter_posts, testing)
@@ -35,7 +35,7 @@ def executeNaiveBayesClassification(V, n, gamma, training, testing):
 # Character Unigram Models
 def executeUnigram(V, gamma, n, training, testing):
 
-    testingData = processTestinggData(testing)
+    testingData = processData(testing)
 
     # language frequencies denoted by _f
     eu_f, ca_f, gl_f, es_f, en_f, pt_f = buildUnigramModelByVocabulary(V, training)
@@ -48,31 +48,17 @@ def executeUnigram(V, gamma, n, training, testing):
 
 
 # fetch and stores training data in list
-def processTrainingData(training):
-    trainingData = []
-    with open(training, "r", encoding="utf8") as f:
+def processData(file_path):
+    data = []
+    with open(file_path, "r", encoding="utf8") as f:
         for line in f:
             component = line.split(None, 3)
             if len(component) != 0:
-                trainingData.append(
+                data.append(
                     # id, username, language, tweet
                     TwitterPost(component[0], component[1], component[2], component[3])
                 )
-        return trainingData
-
-
-# fetch and stores test data in list
-def processTestinggData(testing):
-    testingData = []
-    with open(testing, "r", encoding="utf8") as f:
-        for line in f:
-            component = line.split(None, 3)
-            if len(component) != 0:
-                testingData.append(
-                    # id, username, language, tweet
-                    TwitterPost(component[0], component[1], component[2], component[3])
-                )
-    return testingData
+        return data
 
 
 # Returns the language with the highest probability for each test tweet
