@@ -3,8 +3,8 @@ import sys
 import re
 import copy
 import math
-
-
+from itertools import product
+import string
 class TwitterPost:
     def __init__(self, id, username, language, tweet):
         self.id = id
@@ -18,18 +18,18 @@ def executeNaiveBayesClassification(V, n, gamma, training, testing):
 
     twitter_posts = processData(training)
 
-    if n == 1:
-        executeUnigram(V, gamma, n, twitter_posts, testing)
+    # if n == 1:
+    #     executeUnigram(V, gamma, n, twitter_posts, testing)
 
-    if n == 2:
-        # implement executeBigram()
-        pass
+    # if n == 2:
+    #     # implement executeBigram()
+    #     pass
 
-    if n == 3:
-        # implement executeTrigram()
-        pass
+    # if n == 3:
+    executeNgram(V, gamma, n, twitter_posts, testing)
+    #     passN
 
-    pass
+    # pass
 
 
 # Character Unigram Models
@@ -213,6 +213,198 @@ def addSmoothing(gamma, frequencies):
                 frequencies[letter][next_letter] += gamma
     return frequencies
 
+def executeNgram(V, gamma, n, training, testing):
+    testingData = processData(testing)
+
+    # language frequencies denoted by _f
+    eu_p, ca_p, gl_p, es_p, en_p, pt_p, language_p = buildNgramModelByVocabulary(V, training, gamma, n)
+
+    for twitterPost in testingData:
+        language, probability = detectTweetNgram(V, twitterPost, eu_p, ca_p, gl_p, es_p, en_p, pt_p, language_p, n)
+        writeToTraceFile(twitterPost, language, probability, V, n, gamma)
+
+
+def buildNgramModelByVocabulary(V, twitter_posts, gamma, n):
+
+
+
+    if V == 0:
+        pattern = re.compile("[a-z]")
+        # get dictionary that has all the possible combinations of letters. example when n=3: {aaa:0,aab:0,aac:0 ... ...,zzx:0,zzy:0,zzz:0}
+        eu_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)]))  # Basque
+        ca_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)]))  # Catalan
+        gl_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)]))  # Galician
+        es_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)]))  # Spanish
+        en_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)]))  # English
+        pt_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)])) # Portuguese
+        # print(len(pt_n_gram_dict))
+    elif V == 1:
+        pattern = re.compile("[A-Za-z]")
+        # get dictionary that has all the possible combinations of letters. example when n=3: {aaa:0,aab:0,aac:0 ... ...,zzx:0,zzy:0,zzz:0}
+        eu_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # Basque
+        ca_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # Catalan
+        gl_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # Galician
+        es_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # Spanish
+        en_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # English
+        pt_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # Portuguese
+        # print(len(pt_n_gram_dict))
+    elif V == 2:
+        pattern = None
+        # dont know what the dictionary contains, so adding key value pair later on the go
+        eu_n_gram_dict = {}  # Basque
+        ca_n_gram_dict = {}  # Catalan
+        gl_n_gram_dict = {}  # Galician
+        es_n_gram_dict = {}  # Spanish
+        en_n_gram_dict = {}  # English
+        pt_n_gram_dict = {}  # Portuguese
+
+    language_probability = {'eu': 0 ,'ca': 0 ,'gl': 0 ,'es': 0 ,'en': 0 ,'pt': 0 }
+    total_tweets = len(twitter_posts) 
+
+    for twitter_post in twitter_posts:
+        if twitter_post.language == "eu":
+            language_probability['eu'] = language_probability['eu'] + 1 # for getting the total number of tweets in eu
+            buildNgramLanguageModel(eu_n_gram_dict, twitter_post, V, pattern, n) # {"abs": 1, "axs": 1, ...}
+        if twitter_post.language == "ca":
+            language_probability['ca'] = language_probability['ca'] + 1
+            buildNgramLanguageModel(ca_n_gram_dict, twitter_post, V, pattern, n)
+        if twitter_post.language == "gl":
+            language_probability['gl'] = language_probability['gl'] + 1
+            buildNgramLanguageModel(gl_n_gram_dict, twitter_post, V, pattern, n)
+        if twitter_post.language == "es":
+            language_probability['es'] = language_probability['es'] + 1
+            buildNgramLanguageModel(es_n_gram_dict, twitter_post, V, pattern, n)
+        if twitter_post.language == "en":
+            language_probability['en'] = language_probability['en'] + 1
+            buildNgramLanguageModel(en_n_gram_dict, twitter_post, V, pattern, n)
+        if twitter_post.language == "pt":
+            language_probability['pt'] = language_probability['pt'] + 1
+            buildNgramLanguageModel(pt_n_gram_dict, twitter_post, V, pattern, n) 
+
+    for key, value in language_probability.items():
+        language_probability[key] = math.log(value / total_tweets) # list: [log(probability of a language showing up)]
+    eu_n_gram_dict["NOT-APPEAR"] = 0  # Basque       {"abs": 1, "axs": 1, ..., "NOT-APPEAR": 0}
+    ca_n_gram_dict["NOT-APPEAR"] = 0   # Catalan
+    gl_n_gram_dict["NOT-APPEAR"] = 0   # Galician
+    es_n_gram_dict["NOT-APPEAR"] = 0   # Spanish
+    en_n_gram_dict["NOT-APPEAR"] = 0   # English
+    pt_n_gram_dict["NOT-APPEAR"] = 0   # Portuguese
+
+    eu_trigram_probability = NgramConditionalProbability(eu_n_gram_dict, gamma) # smoothing if needed, {"abs": (1+0.1)/N+V*0.1, "axs": (1+0.1)/N+V*0.1, ..., "NOT-APPEAR": (0+0.1)/N+V*0.1}
+    ca_trigram_probability = NgramConditionalProbability(ca_n_gram_dict, gamma)
+    gl_trigram_probability = NgramConditionalProbability(gl_n_gram_dict, gamma)
+    es_trigram_probability = NgramConditionalProbability(es_n_gram_dict, gamma)
+    en_trigram_probability = NgramConditionalProbability(en_n_gram_dict, gamma)
+    pt_trigram_probability = NgramConditionalProbability(pt_n_gram_dict, gamma)
+
+    return (eu_trigram_probability, ca_trigram_probability, gl_trigram_probability, es_trigram_probability, en_trigram_probability, pt_trigram_probability, language_probability)
+
+def buildNgramLanguageModel(ngram_dict, twitter_post, V, pattern, n):
+    if V == 0: 
+        tweet = twitter_post.tweet.lower()
+        for i in range(len(tweet)-n):
+            ngram = tweet[i:i+n] # get an ngram, "a", "aa", or "aaa"
+            if pattern.match(ngram) is not None:
+                if ngram in ngram_dict.keys():
+                    ngram_dict[ngram] += 1
+                else:
+                    ngram_dict[ngram] = 1
+
+    if V == 1:
+        tweet = twitter_post.tweet
+        for i in range(len(tweet)-n):
+            ngram = tweet[i:i+n]
+            if pattern.match(ngram) is not None:
+                if ngram in ngram_dict.keys():
+                    ngram_dict[ngram] += 1
+                else:
+                    ngram_dict[ngram] = 1
+
+    if V == 2:
+        tweet = twitter_post.tweet
+        for i in range(len(tweet)-n):
+            ngram = tweet[i:i+n]
+            if ngram.isalpha() is True:
+                if ngram in ngram_dict.keys():
+                    ngram_dict[ngram] += 1
+                else:
+                    ngram_dict[ngram] = 1
+
+def NgramConditionalProbability(ngram_dict, gamma):    
+    if gamma != 0 and gamma <= 1:
+        total_ngram = len(ngram_dict)
+
+        total_instance = 0
+        for key, value in ngram_dict.items():
+            total_instance = total_instance + value
+            
+        for key, value in ngram_dict.items():
+            ngram_dict[key] = (value + gamma)/(total_instance + gamma*total_ngram)
+
+    return ngram_dict
+
+def detectTweetNgram(V, twitterPost, eu_p, ca_p, gl_p, es_p, en_p, pt_p, language_p, n):
+    probability_dict = {}
+    probability_dict['eu'] = language_p['eu'] + ngramCalculateProbability(eu_p, twitterPost, V, n)
+    probability_dict['ca'] = language_p['ca'] + ngramCalculateProbability(ca_p, twitterPost, V, n)
+    probability_dict['gl'] = language_p['gl'] + ngramCalculateProbability(gl_p, twitterPost, V, n)
+    probability_dict['es'] = language_p['es'] + ngramCalculateProbability(es_p, twitterPost, V, n)
+    probability_dict['en'] = language_p['en'] + ngramCalculateProbability(en_p, twitterPost, V, n)
+    probability_dict['pt'] = language_p['pt'] + ngramCalculateProbability(pt_p, twitterPost, V, n)
+
+    language = max(probability_dict, key=probability_dict.get)
+
+    probability = probability_dict[language]
+    return language, probability
+    
+
+
+def ngramCalculateProbability(target_language_p, twitterPost, V, n):
+    if V == 0:
+        pattern = re.compile("[a-z]")
+        tweet = twitterPost.tweet.lower()
+        p = 0
+        for i in range(len(tweet)-n):
+            ngram = tweet[i:i+n]
+            if pattern.match(ngram) is not None:
+                if ngram in target_language_p.keys():
+                    if target_language_p[ngram] == 0:
+                        p += -math.inf
+                    else:
+                        p += math.log(target_language_p[ngram])
+                else:
+                    p += math.log(target_language_p["NOT-APPEAR"])
+        
+    if V == 1:
+        pattern = re.compile("[A-Za-z]")
+        tweet = twitterPost.tweet
+        p = 0
+        for i in range(len(tweet)-n):
+            ngram = tweet[i:i+n]
+            if pattern.match(ngram) is not None:
+                if ngram in target_language_p.keys():
+                    if target_language_p[ngram] == 0:
+                        p += -math.inf
+                    else:
+                        p += math.log(target_language_p[ngram])
+                else:
+                    p += math.log(target_language_p["NOT-APPEAR"])
+
+    if V == 2:
+        tweet = twitterPost.tweet
+        p = 0
+        for i in range(len(tweet)-n):
+            ngram = tweet[i:i+n]
+            if ngram.isalpha() is True:
+                if ngram in target_language_p.keys():
+                    if target_language_p[ngram] == 0:
+                        p += -math.inf
+                    else:
+                        p += math.log(target_language_p[ngram])
+                else:
+                    p += math.log(target_language_p["NOT-APPEAR"])
+    return p
+    
 
 # builds a 2-D dictionary for each language
 def buildUnigramModelByVocabulary(V, twitter_posts):
@@ -359,13 +551,19 @@ def uprint(*objects, sep=" ", end="\n", file=sys.stdout):
 
 
 def main():
-    V = 0
-    n = 1
-    gamma = 0.1
-    training = os.path.join(sys.path[0], "training-tweets.txt")
-    testing = os.path.join(sys.path[0], "test-tweets-given.txt")
-    executeNaiveBayesClassification(V, n, gamma, training, testing)
+    for V in range(3):
+        for n in range(1,4):
+            gamma = 0.1
+            print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
+            # training = os.path.join(sys.path[0], "training-tweets.txt")
+            training = os.path.join(sys.path[0], "training-tweets.txt")
+            testing = os.path.join(sys.path[0], "test-tweets-given.txt")
+            executeNaiveBayesClassification(V, n, gamma, training, testing)
 
 
 if __name__ == "__main__":
     main()
+
+
+
+
