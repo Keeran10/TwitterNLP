@@ -473,12 +473,14 @@ def writeToTraceFile(twitterPost, language, probability, V, n, gamma):
 def writeToEvaluationFile(V, n, gamma):
 
     total_tweet = 0
+    # in reality
     eu_tweet = 0
     ca_tweet = 0
     gl_tweet = 0
     es_tweet = 0
     en_tweet = 0
     pt_tweet = 0
+    # predicted
     eu_labeled = 0
     ca_labeled = 0
     gl_labeled = 0
