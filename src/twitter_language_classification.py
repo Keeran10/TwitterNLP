@@ -575,7 +575,7 @@ def writeToEvaluationFile(V, n, gamma):
     gl_p = gl_tp / (gl_tp + gl_fp)
     es_p = es_tp / (es_tp + es_fp)
     en_p = en_tp / (en_tp + en_fp)
-    pt_p = eu_tp / (pt_tp + pt_fp)
+    pt_p = pt_tp / (pt_tp + pt_fp)
 
     # recall
     eu_r = eu_tp / eu_tweet
