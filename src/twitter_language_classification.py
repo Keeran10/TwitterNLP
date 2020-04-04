@@ -1,10 +1,10 @@
 import os
 import sys
 import re
-import copy
 import math
 from itertools import product
 import string
+
 class TwitterPost:
     def __init__(self, id, username, language, tweet):
         self.id = id
@@ -18,34 +18,7 @@ def executeNaiveBayesClassification(V, n, gamma, training, testing):
 
     twitter_posts = processData(training)
 
-    # if n == 1:
-    #     executeUnigram(V, gamma, n, twitter_posts, testing)
-
-    # if n == 2:
-    #     # implement executeBigram()
-    #     pass
-
-    # if n == 3:
     executeNgram(V, gamma, n, twitter_posts, testing)
-    #     passN
-
-    # pass
-
-
-# Character Unigram Models
-def executeUnigram(V, gamma, n, training, testing):
-
-    testingData = processData(testing)
-
-    # language frequencies denoted by _f
-    eu_f, ca_f, gl_f, es_f, en_f, pt_f = buildUnigramModelByVocabulary(V, training)
-
-    for twitterPost in testingData:
-        language, probability = detectTweetLanguage(
-            V, gamma, twitterPost, eu_f, ca_f, gl_f, es_f, en_f, pt_f
-        )
-        writeToTraceFile(twitterPost, language, probability, V, n, gamma)
-
 
 # fetch and stores training/testing data in list
 def processData(file_path):
@@ -61,158 +34,6 @@ def processData(file_path):
         return data
 
 
-# Returns the language with the highest probability for each test tweet
-def detectTweetLanguage(V, gamma, twitterPost, eu_f, ca_f, gl_f, es_f, en_f, pt_f):
-
-    # language frequencies denoted by _f
-    eu_f = addMissingFrequenciesFromTestTweet(twitterPost.tweet, eu_f, V)
-    ca_f = addMissingFrequenciesFromTestTweet(twitterPost.tweet, ca_f, V)
-    gl_f = addMissingFrequenciesFromTestTweet(twitterPost.tweet, gl_f, V)
-    es_f = addMissingFrequenciesFromTestTweet(twitterPost.tweet, es_f, V)
-    en_f = addMissingFrequenciesFromTestTweet(twitterPost.tweet, en_f, V)
-    pt_f = addMissingFrequenciesFromTestTweet(twitterPost.tweet, pt_f, V)
-
-    # Language conditional probabilities denoted by _p
-    eu_p = convertFrequenciesIntoProbabilities(addSmoothing(gamma, eu_f))
-    ca_p = convertFrequenciesIntoProbabilities(addSmoothing(gamma, ca_f))
-    gl_p = convertFrequenciesIntoProbabilities(addSmoothing(gamma, gl_f))
-    es_p = convertFrequenciesIntoProbabilities(addSmoothing(gamma, es_f))
-    en_p = convertFrequenciesIntoProbabilities(addSmoothing(gamma, en_f))
-    pt_p = convertFrequenciesIntoProbabilities(addSmoothing(gamma, pt_f))
-
-    probabilities = {}
-    probabilities["eu"] = calculateProbabilityForTestTweet(
-        twitterPost.tweet, eu_p, V, gamma
-    )
-    probabilities["ca"] = calculateProbabilityForTestTweet(
-        twitterPost.tweet, ca_p, V, gamma
-    )
-    probabilities["gl"] = calculateProbabilityForTestTweet(
-        twitterPost.tweet, gl_p, V, gamma
-    )
-    probabilities["es"] = calculateProbabilityForTestTweet(
-        twitterPost.tweet, es_p, V, gamma
-    )
-    probabilities["en"] = calculateProbabilityForTestTweet(
-        twitterPost.tweet, en_p, V, gamma
-    )
-    probabilities["pt"] = calculateProbabilityForTestTweet(
-        twitterPost.tweet, pt_p, V, gamma
-    )
-
-    language = max(probabilities)
-    probability = probabilities[language]
-
-    return language, probability
-
-
-# Adds the missing frequencies found in the test tweets but not in the training tweets
-def addMissingFrequenciesFromTestTweet(tweet, language, V):
-    if V == 0:
-        pattern = re.compile("[a-z]")
-        for i in range(len(tweet) - 2):
-            letter = tweet[i]
-            letter = letter.lower()
-            nextLetter = tweet[i + 1]
-            nextLetter = nextLetter.lower()
-            if pattern.match(letter) is None or pattern.match(nextLetter) is None:
-                continue
-            if letter not in language.keys():
-                language[letter] = {}
-                language[letter][nextLetter] = 0
-            if letter in language.keys() and nextLetter not in language[letter].keys():
-                language[letter][nextLetter] = 0
-    if V == 1:
-        pattern = re.compile("[A-Za-z]")
-        for i in range(len(tweet) - 2):
-            letter = tweet[i]
-            nextLetter = tweet[i + 1]
-            if pattern.match(letter) is None or pattern.match(nextLetter) is None:
-                continue
-            if letter not in language.keys():
-                language[letter] = {}
-                language[letter][nextLetter] = 0
-            if letter in language.keys() and nextLetter not in language[letter].keys():
-                language[letter][nextLetter] = 0
-    if V == 2:
-        for i in range(len(tweet) - 2):
-            letter = tweet[i]
-            nextLetter = tweet[i + 1]
-            if letter.isalpha() is False or nextLetter.isalpha() is False:
-                continue
-            if letter not in language.keys():
-                language[letter] = {}
-                language[letter][nextLetter] = 0
-            if letter in language.keys() and nextLetter not in language[letter].keys():
-                language[letter][nextLetter] = 0
-    return language
-
-
-# Iterates through test tweet letters and returns the probability of whether it belongs to a given language
-def calculateProbabilityForTestTweet(tweet, language, V, gamma):
-
-    language_probability = 0
-
-    if V == 0:
-        pattern = re.compile("[a-z]")
-        for i in range(len(tweet) - 2):
-            letter = tweet[i]
-            letter = letter.lower()
-            nextLetter = tweet[i + 1]
-            nextLetter = nextLetter.lower()
-            if pattern.match(letter) is None or pattern.match(nextLetter) is None:
-                continue
-            if language[letter][nextLetter] == 0:
-                language_probability += -math.inf
-            else:
-                language_probability += math.log(language[letter][nextLetter])
-    elif V == 1:
-        pattern = re.compile("[A-Za-z]")
-        for i in range(len(tweet) - 2):
-            letter = tweet[i]
-            nextLetter = tweet[i + 1]
-            if pattern.match(letter) is None or pattern.match(nextLetter) is None:
-                continue
-            if language[letter][nextLetter] == 0:
-                language_probability += -math.inf
-            else:
-                language_probability += math.log(language[letter][nextLetter])
-    elif V == 2:
-        for i in range(len(tweet) - 2):
-            letter = tweet[i]
-            nextLetter = tweet[i + 1]
-            if letter.isalpha() is False or nextLetter.isalpha() is False:
-                continue
-            if language[letter][nextLetter] == 0:
-                language_probability += -math.inf
-            else:
-                language_probability += math.log(language[letter][nextLetter])
-
-    return language_probability
-
-
-# Migrates frequencies into conditional probabilities in new 2-D dictionaries
-def convertFrequenciesIntoProbabilities(frequencies):
-    probabilities = copy.deepcopy(frequencies)
-    row_total = 0
-    for letter in frequencies.keys():
-        for next_letter in frequencies[letter].keys():
-            row_total += frequencies[letter][next_letter]
-        for next_letter in frequencies[letter].keys():
-            probabilities[letter][next_letter] = (
-                probabilities[letter][next_letter] / row_total
-            )
-    return probabilities
-
-
-# Adds gamma to all cells of 2-D dictionaries
-def addSmoothing(gamma, frequencies):
-    if gamma != 0 and gamma <= 1:
-        for letter in frequencies.keys():
-            for next_letter in frequencies[letter].keys():
-                frequencies[letter][next_letter] += gamma
-    return frequencies
-
 def executeNgram(V, gamma, n, training, testing):
     testingData = processData(testing)
 
@@ -223,10 +44,10 @@ def executeNgram(V, gamma, n, training, testing):
         language, probability = detectTweetNgram(V, twitterPost, eu_p, ca_p, gl_p, es_p, en_p, pt_p, language_p, n)
         writeToTraceFile(twitterPost, language, probability, V, n, gamma)
 
+    writeToEvaluationFile(V, n, gamma)
+
 
 def buildNgramModelByVocabulary(V, twitter_posts, gamma, n):
-
-
 
     if V == 0:
         pattern = re.compile("[a-z]")
@@ -237,6 +58,7 @@ def buildNgramModelByVocabulary(V, twitter_posts, gamma, n):
         es_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)]))  # Spanish
         en_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)]))  # English
         pt_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)])) # Portuguese
+        # print(eu_n_gram_dict)
         # print(len(pt_n_gram_dict))
     elif V == 1:
         pattern = re.compile("[A-Za-z]")
@@ -247,6 +69,7 @@ def buildNgramModelByVocabulary(V, twitter_posts, gamma, n):
         es_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # Spanish
         en_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # English
         pt_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # Portuguese
+        # print(eu_n_gram_dict)
         # print(len(pt_n_gram_dict))
     elif V == 2:
         pattern = None
@@ -406,111 +229,6 @@ def ngramCalculateProbability(target_language_p, twitterPost, V, n):
     return p
     
 
-# builds a 2-D dictionary for each language
-def buildUnigramModelByVocabulary(V, twitter_posts):
-
-    eu_letters = {}  # Basque
-    ca_letters = {}  # Catalan
-    gl_letters = {}  # Galician
-    es_letters = {}  # Spanish
-    en_letters = {}  # English
-    pt_letters = {}  # Portuguese
-
-    if V == 0:
-        pattern = re.compile("[a-z]")
-    elif V == 1:
-        pattern = re.compile("[A-Za-z]")
-    elif V == 2:
-        pattern = None
-
-    for twitter_post in twitter_posts:
-        if twitter_post.language == "eu":
-            buildUnigramLanguageModel(eu_letters, twitter_post, V, pattern)
-        if twitter_post.language == "ca":
-            buildUnigramLanguageModel(ca_letters, twitter_post, V, pattern)
-        if twitter_post.language == "gl":
-            buildUnigramLanguageModel(gl_letters, twitter_post, V, pattern)
-        if twitter_post.language == "es":
-            buildUnigramLanguageModel(es_letters, twitter_post, V, pattern)
-        if twitter_post.language == "en":
-            buildUnigramLanguageModel(en_letters, twitter_post, V, pattern)
-        if twitter_post.language == "pt":
-            buildUnigramLanguageModel(pt_letters, twitter_post, V, pattern)
-
-    return (eu_letters, ca_letters, gl_letters, es_letters, en_letters, pt_letters)
-
-
-# builds a 2-D dictionary for a given language
-def buildUnigramLanguageModel(language_letters, twitter_post, V, pattern):
-    if V == 0:
-        tweet = twitter_post.tweet
-        for i in range(len(tweet) - 1):
-            letter = tweet[i]
-            letter = letter.lower()
-            if pattern.match(letter) is None:
-                continue
-            if letter not in language_letters.keys():
-                language_letters[letter] = {}
-                if i <= len(tweet) - 2:
-                    next_letter = tweet[i + 1].lower()
-                    if pattern.match(next_letter) is None:
-                        continue
-                    language_letters[letter][next_letter] = 1
-            else:
-                if i <= len(tweet) - 2:
-                    next_letter = tweet[i + 1].lower()
-                    if pattern.match(next_letter) is None:
-                        continue
-                    if next_letter not in language_letters[letter].keys():
-                        language_letters[letter][next_letter] = 1
-                    else:
-                        language_letters[letter][next_letter] += 1
-
-    if V == 1:
-        tweet = twitter_post.tweet
-        for i in range(len(tweet) - 1):
-            letter = tweet[i]
-            if pattern.match(letter) is None:
-                continue
-            if letter not in language_letters.keys():
-                language_letters[letter] = {}
-                if i <= len(tweet) - 2:
-                    next_letter = tweet[i + 1]
-                    if pattern.match(next_letter) is None:
-                        continue
-                    language_letters[letter][next_letter] = 1
-            else:
-                if i <= len(tweet) - 2:
-                    next_letter = tweet[i + 1]
-                    if pattern.match(next_letter) is None:
-                        continue
-                    if next_letter not in language_letters[letter].keys():
-                        language_letters[letter][next_letter] = 1
-                    else:
-                        language_letters[letter][next_letter] += 1
-    if V == 2:
-        tweet = twitter_post.tweet
-        for i in range(len(tweet) - 1):
-            letter = tweet[i]
-            if letter.isalpha() is False:
-                continue
-            if letter not in language_letters.keys():
-                language_letters[letter] = {}
-                if i <= len(tweet) - 2:
-                    next_letter = tweet[i + 1]
-                    if next_letter.isalpha() is False:
-                        continue
-                    language_letters[letter][next_letter] = 1
-            else:
-                if i <= len(tweet) - 2:
-                    next_letter = tweet[i + 1]
-                    if next_letter.isalpha() is False:
-                        continue
-                    if next_letter not in language_letters[letter].keys():
-                        language_letters[letter][next_letter] = 1
-                    else:
-                        language_letters[letter][next_letter] += 1
-
 
 # writes final answers in trace file
 def writeToTraceFile(twitterPost, language, probability, V, n, gamma):
@@ -539,15 +257,389 @@ def writeToTraceFile(twitterPost, language, probability, V, n, gamma):
         )
 
 
-# following borrowed function is used to circumvent encoding errors when printing dictionaries with isalpha allowed characters
-# https://stackoverflow.com/questions/14630288/unicodeencodeerror-charmap-codec-cant-encode-character-maps-to-undefined
-def uprint(*objects, sep=" ", end="\n", file=sys.stdout):
-    enc = file.encoding
-    if enc == "UTF-8":
-        print(*objects, sep=sep, end=end, file=file)
+
+# find Basque's diacritics from the training tweets
+# def BasqueSpecialCharacters():
+#     data = []
+#     diacritics = []
+#     count = 0
+#     with open(os.path.join(sys.path[0], "training-tweets.txt"), "r", encoding="utf8") as f:
+#         for line in f:
+#             component = line.split(None, 3)
+#             if len(component) != 0 and component[2] == "eu":
+#                 count += 1
+#                 data.append(
+#                     # id, username, language, tweet
+#                     TwitterPost(component[0], component[1], component[2], component[3])
+#                 )
+#
+#     for d in data:
+#         for c in d.tweet:
+#             if c not in string.ascii_letters and c.isalpha() and c.lower() not in diacritics:
+#                 diacritics.append(c.lower())
+#         # print(d.id, d.username, d.language, d.tweet)
+#
+#     # print("Count:", count)
+#     # print(diacritics)
+#     return diacritics
+#
+# # find Catalan's diacritics from the training tweets
+# def CatalanSpecialCharacters():
+#     data = []
+#     diacritics = []
+#     count = 0
+#     with open(os.path.join(sys.path[0], "training-tweets.txt"), "r", encoding="utf8") as f:
+#         for line in f:
+#             component = line.split(None, 3)
+#             if len(component) != 0 and component[2] == "ca":
+#                 count += 1
+#                 data.append(
+#                     # id, username, language, tweet
+#                     TwitterPost(component[0], component[1], component[2], component[3])
+#                 )
+#
+#     for d in data:
+#         for c in d.tweet:
+#             if c not in string.ascii_letters and c.isalpha() and c.lower() not in diacritics:
+#                 diacritics.append(c.lower())
+#         # print(d.id, d.username, d.language, d.tweet)
+#
+#     # print("Count:", count)
+#     # print(diacritics)
+#     return diacritics
+#
+#
+# # find Galician's diacritics from the training tweets
+# def GalicianSpecialCharacters():
+#     data = []
+#     diacritics = []
+#     count = 0
+#     with open(os.path.join(sys.path[0], "training-tweets.txt"), "r", encoding="utf8") as f:
+#         for line in f:
+#             component = line.split(None, 3)
+#             if len(component) != 0 and component[2] == "gl":
+#                 count += 1
+#                 data.append(
+#                     # id, username, language, tweet
+#                     TwitterPost(component[0], component[1], component[2], component[3])
+#                 )
+#
+#     for d in data:
+#         for c in d.tweet:
+#             if c not in string.ascii_letters and c.isalpha() and c.lower() not in diacritics:
+#                 diacritics.append(c.lower())
+#         # print(d.id, d.username, d.language, d.tweet)
+#
+#     # print("Count:", count)
+#     # print(diacritics)
+#     return diacritics
+#
+# # return Spanish's diacritics according to the reference
+# def SpanishSpecialCharacters():
+#     list = ["á", "é", "í", "ó", "ú", "ñ", "ü"]  # reference: paper "Automatic Language Identification for Romance Languages using Stop Words and Diacritics"
+#     return list
+#
+# # return portuguese's diacritics according to the reference
+# def PortugueseSpecialCharacters():
+#     list = ["â", "ê", "ô", "á", "à", "é", "í", "ó", "ú", "ã", "õ", "ç"] #reference: https://www.fluentu.com/blog/portuguese/portuguese-accent-marks/
+#     return list
+#
+#
+# def stopWords(lang):
+#     if lang == "eu":
+#         list = ['al','anitz','arabera','asko','baina',"bat","batean","batek","bati","batzuei","batzuek",'batzuetan',
+#                 'batzuk','bera','beraiek','berau','berauek','bere','berori','beroriek','beste','bezala','da','dago',
+#                 'dira','ditu','du','dute','edo','egin','ere','eta','eurak','ez','gainera','gu','gutxi','guzti','haiei',
+#                 'haietan','hainbeste','hala','han','handik','hango','hara','hari','hark','hartan','hau','hauei','hauek',
+#                 'hauetan','hemen','hemendik','hemengo','hi','hona','honek','honela','honetan','honi','hor','hori','horiei',
+#                 'horiek','horietan','horko','horra	horrek','horrela','horretan','horri','hortik','hura','izan','ni','noiz',
+#                 'nola','non','nondik','nongo','nora','ze','zein','zen','zenbait','zenbat','zer','zergatik','ziren','zituen',
+#                 'zu','zuek','zuen','zuten']
+#         list.sort()
+#         return list
+#
+#     elif lang == "ca":
+#         list = ['de','es','i','a','o','un','una','unes','uns','un','tot','també','altre','algun','alguna','alguns','algunes',
+#                 'ser','és','soc','ets','som','estic','està','estem','esteu','estan','com','en','per','perquè','per que','estat',
+#                 'estava','ans','abans','éssent','ambdós','però','per','poder','potser','puc','podem','podeu','poden','vaig','va',
+#                 'van','fer','faig','fa','fem','feu','fan','cada','fi','inclòs','primer','des de','conseguir','consegueixo','consigueix',
+#                 'consigueixes','conseguim','consigueixen','anar','haver','tenir','tinc','te','tenim','teniu','tene','el','la','les',
+#                 'els','seu','aquí','meu','teu','ells','elles','ens','nosaltres','vosaltres','si','dins','sols','solament','saber','saps',
+#                 'sap','sabem','sabeu','saben','últim','llarg','bastant','fas','molts','aquells','aquelles','seus','llavors','sota','dalt',
+#                 'ús','molt','era','eres','erem','eren','mode','bé','quant','quan','on','mentre','qui','amb','entre','sense','jo','aquell']
+#         list.sort()
+#         return list
+#     elif lang == "gl":
+#         list = ['a','aínda','alí','aquel','aquela','aquelas','aqueles','aquilo','aquí','ao','aos','as','así','á','ben','cando','che','co',
+#                   'coa','comigo','con','connosco','contigo','convosco','coas','cos','cun','cuns','cunha','cunhas','da','dalgunha','dalgunhas',
+#                   'dalgún','dalgúns','das','de','del','dela','delas','deles','desde','deste','do','dos','dun','duns','dunha','dunhas','e','el',
+#                   'ela','elas','eles','era','eran','esa','esas','ese','eses','esta','estar','estaba','está','este','estes','estiven','estou','eu',
+#                   'é','facer','foi','foron','fun','había','hai','iso','isto','la','las','lle','lles','lo','los','mais','me','meu','meus','min',
+#                   'miña','miñas','moi','na','nas','neste','nin','no','non','nos','nosa','nosas','noso','nosos','nós','nun','nunha','nuns','nunhas',
+#                   'o','os','ou','ó','ós','para','pero','pode','pois','pola','polas','polo','polos','por','que','se','senón','ser','seu','seus','sexa',
+#                   'sido','sobre','súa','súas','tamén','tan','te','ten','teñen','teño','ter','teu','teus','ti','tido','tiña','tiven','túa','túas','un','unha',
+#                   'unhas','uns','vos','vosa','vosas','voso','vosos','vós']
+#         list.sort()
+#         return list
+#     elif lang == "es":
+#         list = ['un','una','unas','unos','uno','sobre','todo','también','tras','otro','algún','alguno','alguna','algunos','algunas','ser','es',
+#                 'soy','eres','somos','sois','estoy','esta','estamos','estais','estan','como','en','para','atras','porque','por qué','estado','estaba',
+#                 'ante','antes','siendo','ambos','pero','por','poder','puede','puedo','podemos','podeis','pueden','fui','fue','fuimos','fueron','hacer',
+#                 'hago','hace','hacemos','haceis','hacen','cada','fin','incluso','primero','desde','conseguir','consigo','consigue','consigues','conseguimos',
+#                 'consiguen','ir','voy','va','vamos','vais','van','vaya','gueno','ha','tener','tiene','tenemos','teneis','tienen','el','la','lo','las',
+#                 'los','su','aqui','mio','tuyo','ellos','ellas','nos','nosotros','vosotros','vosotras','si','dentro','solo','solamente','saber','sabes','sabe',
+#                 'sabemos','sabeis','saben','ultimo','largo','bastante','haces','muchos','aquellos','aquellas','sus','entonces','tiempo','verdad','verdadero',
+#                 'verdadera','cierto','ciertos','cierta','ciertas','intentar','intento','intenta','intentas','intentamos','intentais','intentan','dos','bajo',
+#                 'arriba','encima','usar','uso','usas','usa','usamos','usais','emplear','empleo','empleas','emplean','ampleamos','empleais','valor','muy',
+#                 'era','eras','eramos','eran','modo','bien','cual','cuando','donde','mientras','quien','entre','sin','trabajo','trabajar','trabajas','trabaja',
+#                 'trabajamos','trabajais','trabajan','podria','podrias','podriamos','podrian','podriais','yo','aquel']
+#         list.sort()
+#         return list
+#
+#     elif lang == "en":
+#         list = ["a","about","above","after","again","against","all","am","an","and","are","aren't","as","at","be","because","been","before","being","below",
+#                 "between","both","but","by","can't","cannot","could","couldn't","did","didn't","do","does","doesn't","doing","don't","down","during","each","few",
+#                 "for","from","further","had","hadn't","has","hasn't","have","haven't","having","he","he'd","he'll","he's","her","here","here's","hers","herself",
+#                 "him","himself","his","how","how's","i","i'd","i'll","i'm","i've","if","in","into","is","isn't","it","it's","its","itself","let's","me","more","most",
+#                 "mustn't","my","myself","no","nor","not","of","off","on","once","only","or","other","ought","our","ours","ourselves","out","over","own","same",
+#                 "shan't","she","she'd","she'll","she's","should","shouldn't","so","some","such","than","that","that's","the","their","theirs","them","themselves",
+#                 "then","there","there's","these","they","they'd","they'll","they're","they've","this","those","through","to","too","under","until","up","very","was",
+#                 "wasn't","we","we'd","we'll","we're","we've","were","weren't","what","what's","when","when's","where","where's","which","while","who","who's","whom","why",
+#                 "why's","with","won't","would","wouldn't","you","you'd","you'll","you're","you've","your","yours","yourself","yourselves"]
+#         list.sort()
+#         return list
+#     elif lang == "pt":
+#         list = ["último","é","acerca","agora","algmas","alguns","ali","ambos","antes","apontar","aquela","aquelas","aquele","aqueles","aqui","atrás","bem","bom","cada",
+#                 "caminho","cima","com","como","comprido","conhecido","corrente","das","debaixo","dentro","desde","desligado","deve","devem","deverá","direita","diz","dizer",
+#                 "dois","dos","e","ela","ele","eles","em","enquanto","então","está","estão","estado","estar","estará","este","estes","esteve","estive","estivemos","estiveram",
+#                 "eu","fará","faz","fazer","fazia","fez","fim","foi","fora","horas","iniciar","inicio","ir","irá","ista","iste","isto","ligado","maioria","maiorias","mais",
+#                 "mas","mesmo","meu","muito","muitos","nós","não","nome","nosso","novo","o","onde","os","ou","outro","para","parte","pegar","pelo","pessoas","pode","poderá",
+#                 "podia","por","porque","povo","promeiro","quê","qual","qualquer","quando","quem","quieto","são","saber","sem","ser","seu","somente","têm","tal","também","tem",
+#                 "tempo","tenho","tentar","tentaram","tente","tentei","teu","teve","tipo","tive","todos","trabalhar","trabalho","tu","um","uma","umas","uns","usa","usar",
+#                 "valor","veja","ver","verdade","verdadeiro","você"]
+#         list.sort()
+#         return list
+#
+#
+# def processBYOMData(file_path):
+#     data = []
+#     with open(file_path, "r", encoding="utf8") as f:
+#         for line in f:
+#             component = line.split(None, 3)
+#             if len(component) != 0:
+#                 data.append(
+#                     # id, username, language, tweet
+#                     TwitterPost(component[0], component[1], component[2], re.split('[, .!]', component[3].strip()))
+#                 )
+#
+#     # for d in data:
+#     #     print(d.id, d.username, d.language, d.tweet)
+#
+#     return data
+#
+#
+# def BYOM(testing):
+#     stopwords_data = processBYOMData(testing)
+#
+#     for tweeterPost in stopwords_data:
+#         if tweeterPost.language == "ca":
+#             eu_stopwords_f = 0
+#             ca_stopwords_f = 0
+#             gl_stopwords_f = 0
+#             es_stopwords_f = 0
+#             en_stopwords_f = 0
+#             pt_stopwords_f = 0
+#             for token in tweeterPost.tweet:
+#                 if token.lower() in stopWords("eu"):
+#                     # print ("eu", token)
+#                     eu_stopwords_f += 1
+#                 if token.lower() in stopWords("ca"):
+#                     # print ("ca", token)
+#                     ca_stopwords_f += 1
+#                 if token.lower() in stopWords("gl"):
+#                     # print ("gl", token)
+#                     gl_stopwords_f += 1
+#                 if token.lower() in stopWords("es"):
+#                     # print ("es", token)
+#                     es_stopwords_f += 1
+#                 if token.lower() in stopWords("en"):
+#                     # print ("en", token)
+#                     en_stopwords_f += 1
+#                 if token.lower() in stopWords("pt"):
+#                     # print ("pt", token)
+#                     pt_stopwords_f += 1
+#             print("stopwords", eu_stopwords_f, ca_stopwords_f, gl_stopwords_f, es_stopwords_f, en_stopwords_f, pt_stopwords_f)
+
+def writeToEvaluationFile(V, n, gamma):
+
+    total_tweet = 0
+    # in reality
+    eu_tweet = 0
+    ca_tweet = 0
+    gl_tweet = 0
+    es_tweet = 0
+    en_tweet = 0
+    pt_tweet = 0
+    # predicted
+    eu_labeled = 0
+    ca_labeled = 0
+    gl_labeled = 0
+    es_labeled = 0
+    en_labeled = 0
+    pt_labeled = 0
+    # true positive
+    eu_tp = 0
+    ca_tp = 0
+    gl_tp = 0
+    es_tp = 0
+    en_tp = 0
+    pt_tp = 0
+    # false positive
+    eu_fp = 0
+    ca_fp = 0
+    gl_fp = 0
+    es_fp = 0
+    en_fp = 0
+    pt_fp = 0
+    correct_tweet = 0
+
+    with open("trace_" + str(V) + "_" + str(n) + "_" + str(gamma) + ".txt", "r") as f1:
+        for line in f1.readlines():
+            total_tweet += 1
+            component = line.strip().split(None, 4)
+            if component[1] == "eu":
+                eu_tweet += 1
+                if component[4] == "correct":
+                    eu_tp += 1
+            elif component[1] == "ca":
+                ca_tweet += 1
+                if component[4] == "correct":
+                    ca_tp += 1
+            elif component[1] == "gl":
+                gl_tweet += 1
+                if component[4] == "correct":
+                    gl_tp += 1
+            elif component[1] == "es":
+                es_tweet += 1
+                if component[4] == "correct":
+                    es_tp += 1
+            elif component[1] == "en":
+                en_tweet += 1
+                if component[4] == "correct":
+                    en_tp += 1
+            elif component[1] == "pt":
+                pt_tweet += 1
+                if component[4] == "correct":
+                    pt_tp += 1
+
+            if component[3] == "eu":
+                eu_labeled += 1
+                if component[4] == "wrong":
+                    eu_fp += 1
+            elif component[3] == "ca":
+                ca_labeled += 1
+                if component[4] == "wrong":
+                    ca_fp += 1
+            elif component[3] == "gl":
+                gl_labeled += 1
+                if component[4] == "wrong":
+                    gl_fp += 1
+            elif component[3] == "es":
+                es_labeled += 1
+                if component[4] == "wrong":
+                    es_fp += 1
+            elif component[3] == "en":
+                en_labeled += 1
+                if component[4] == "wrong":
+                    en_fp += 1
+            elif component[3] == "pt":
+                pt_labeled += 1
+                if component[4] == "wrong":
+                    pt_fp += 1
+
+            if component[4] == "correct":
+                correct_tweet += 1
+
+    print(total_tweet,eu_tweet,ca_tweet,gl_tweet,es_tweet,en_tweet,pt_tweet)
+    print(total_tweet,eu_labeled,ca_labeled,gl_labeled,es_labeled,en_labeled,pt_labeled)
+    print(total_tweet,eu_tp,ca_tp,gl_tp,es_tp,en_tp,pt_tp)
+    print(total_tweet, eu_fp, ca_fp, gl_fp, es_fp, en_fp, pt_fp)
+    print("correct:", correct_tweet)
+
+    # accuracy
+    acc = correct_tweet / total_tweet
+
+    # precision
+    eu_p = eu_tp / (eu_tp + eu_fp)
+    ca_p = ca_tp / (ca_tp + ca_fp)
+    gl_p = gl_tp / (gl_tp + gl_fp)
+    es_p = es_tp / (es_tp + es_fp)
+    en_p = en_tp / (en_tp + en_fp)
+    pt_p = pt_tp / (pt_tp + pt_fp)
+
+    # recall
+    eu_r = eu_tp / eu_tweet
+    ca_r = ca_tp / ca_tweet
+    gl_r = gl_tp / gl_tweet
+    es_r = es_tp / es_tweet
+    en_r = en_tp / en_tweet
+    pt_r = pt_tp / pt_tweet
+
+    # f1-measure
+    if eu_p + eu_r != 0:
+        eu_f1 = 2 * eu_p * eu_r / (eu_p + eu_r)
     else:
-        f = lambda obj: str(obj).encode(enc, errors="backslashreplace").decode(enc)
-        print(*map(f, objects), sep=sep, end=end, file=file)
+        eu_f1 = "N/A"
+    if ca_p + ca_r != 0:
+        ca_f1 = 2 * ca_p * ca_r / (ca_p + ca_r)
+    else:
+        ca_f1 = "N/A"
+    if gl_p + gl_r != 0:
+        gl_f1 = 2 * gl_p * gl_r / (gl_p + gl_r)
+    else:
+        gl_f1 = "N/A"
+    if es_p + es_r != 0:
+        es_f1 = 2 * es_p * es_r / (es_p + es_r)
+    else:
+        es_f1 = "N/A"
+    if en_p + en_r != 0:
+        en_f1 = 2 * en_p * en_r / (en_p + en_r)
+    else:
+        en_f1 = "N/A"
+    if pt_p + pt_r != 0:
+        pt_f1 = 2 * pt_p * pt_r / (pt_p + pt_r)
+    else:
+        pt_f1 = "N/A"
+
+    # macro-f1
+    if eu_f1 != "N/A" and ca_f1 != "N/A" and gl_f1 != "N/A" and es_f1 != "N/A" and en_f1 != "N/A" and pt_f1 != "N/A":
+        macro_f1=(eu_f1 + ca_f1 + gl_f1 + es_f1 + en_f1 + pt_f1)/6
+    else:
+        macro_f1 = "N/A"
+
+    # weighed-average-f1
+    if eu_f1 != "N/A" and ca_f1 != "N/A" and gl_f1 != "N/A" and es_f1 != "N/A" and en_f1 != "N/A" and pt_f1 != "N/A":
+        weighed_average_f1 = (eu_tweet * eu_f1 + ca_tweet * ca_f1 + gl_tweet * gl_f1 + es_tweet * es_f1 + en_tweet * en_f1 + pt_tweet * pt_f1) / total_tweet
+    else:
+        weighed_average_f1 = "N/A"
+
+    print(str(acc) + "\n"
+            + str(eu_p) + "  " + str(ca_p) + "  " + str(gl_p) + "  " + str(es_p) + "  " + str(en_p) + "  " + str(pt_p)+ "  " + "\n"
+            + str(eu_r) + "  " + str(ca_r) + "  " + str(gl_r) + "  " + str(es_r) + "  " + str(en_r )+ "  " + str(pt_r) + "  " + "\n"
+            + str(eu_f1) + "  " + str(ca_f1) + "  " + str(gl_f1) + "  " + str(es_f1) + "  " + str(en_f1) + "  " + str(pt_f1) + "  " + "\n"
+            + str(macro_f1) + "  " + str(weighed_average_f1))
+
+    with open("eval_" + str(V) + "_" + str(n) + "_" + str(gamma) + ".txt", "w", encoding="utf-8",) as f:
+        f.write(
+            str(acc) + "\n"
+            + str(eu_p) + "  " + str(ca_p) + "  " + str(gl_p) + "  " + str(es_p) + "  " + str(en_p) + "  " + str(
+                pt_p) + "  " + "\n"
+            + str(eu_r) + "  " + str(ca_r) + "  " + str(gl_r) + "  " + str(es_r) + "  " + str(en_r) + "  " + str(
+                pt_r) + "  " + "\n"
+            + str(eu_f1) + "  " + str(ca_f1) + "  " + str(gl_f1) + "  " + str(es_f1) + "  " + str(en_f1) + "  " + str(
+                pt_f1) + "  " + "\n"
+            + str(macro_f1) + "  " + str(weighed_average_f1)
+        )
 
 
 def main():
@@ -559,7 +651,8 @@ def main():
             training = os.path.join(sys.path[0], "training-tweets.txt")
             testing = os.path.join(sys.path[0], "test-tweets-given.txt")
             executeNaiveBayesClassification(V, n, gamma, training, testing)
-
+    # BYOM(os.path.join(sys.path[0], "test-tweets-given.txt"))
+    # print(stopWords("pt"))
 
 if __name__ == "__main__":
     main()
