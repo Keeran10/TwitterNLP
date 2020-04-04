@@ -105,3 +105,4 @@ ENV/
 
 # text files
 *.txt
+*.json
