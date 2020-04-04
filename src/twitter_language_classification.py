@@ -90,6 +90,8 @@ def executeNgram(V, gamma, n, training, testing):
         t.tweet = tweet_preprocess(t, stop_words_toggle, print_toggle)
         language, probability = detectTweetNgram(V, t, eu_p, ca_p, gl_p, es_p, en_p, pt_p, language_p, n)
         writeToTraceFile(t, language, probability, V, n, gamma)
+    
+    writeToEvaluationFile(V, n, gamma)
 
 
 
@@ -276,7 +278,6 @@ def ngramCalculateProbability(target_language_p, twitterPost, V, n):
     return p
     
 
-
 # writes final answers in trace file
 def writeToTraceFile(twitterPost, language, probability, V, n, gamma):
 
@@ -301,6 +302,178 @@ def writeToTraceFile(twitterPost, language, probability, V, n, gamma):
             + "  "
             + label
             + "\n"
+        )
+
+# generate evaluation file
+def writeToEvaluationFile(V, n, gamma):
+
+    total_tweet = 0
+    # in reality
+    eu_tweet = 0
+    ca_tweet = 0
+    gl_tweet = 0
+    es_tweet = 0
+    en_tweet = 0
+    pt_tweet = 0
+    # predicted
+    eu_labeled = 0
+    ca_labeled = 0
+    gl_labeled = 0
+    es_labeled = 0
+    en_labeled = 0
+    pt_labeled = 0
+    # true positive
+    eu_tp = 0
+    ca_tp = 0
+    gl_tp = 0
+    es_tp = 0
+    en_tp = 0
+    pt_tp = 0
+    # false positive
+    eu_fp = 0
+    ca_fp = 0
+    gl_fp = 0
+    es_fp = 0
+    en_fp = 0
+    pt_fp = 0
+    correct_tweet = 0
+
+    with open("trace_" + str(V) + "_" + str(n) + "_" + str(gamma) + ".txt", "r") as f1:
+        for line in f1.readlines():
+            total_tweet += 1
+            component = line.strip().split(None, 4)
+            if component[1] == "eu":
+                eu_tweet += 1
+                if component[4] == "correct":
+                    eu_tp += 1
+            elif component[1] == "ca":
+                ca_tweet += 1
+                if component[4] == "correct":
+                    ca_tp += 1
+            elif component[1] == "gl":
+                gl_tweet += 1
+                if component[4] == "correct":
+                    gl_tp += 1
+            elif component[1] == "es":
+                es_tweet += 1
+                if component[4] == "correct":
+                    es_tp += 1
+            elif component[1] == "en":
+                en_tweet += 1
+                if component[4] == "correct":
+                    en_tp += 1
+            elif component[1] == "pt":
+                pt_tweet += 1
+                if component[4] == "correct":
+                    pt_tp += 1
+
+            if component[3] == "eu":
+                eu_labeled += 1
+                if component[4] == "wrong":
+                    eu_fp += 1
+            elif component[3] == "ca":
+                ca_labeled += 1
+                if component[4] == "wrong":
+                    ca_fp += 1
+            elif component[3] == "gl":
+                gl_labeled += 1
+                if component[4] == "wrong":
+                    gl_fp += 1
+            elif component[3] == "es":
+                es_labeled += 1
+                if component[4] == "wrong":
+                    es_fp += 1
+            elif component[3] == "en":
+                en_labeled += 1
+                if component[4] == "wrong":
+                    en_fp += 1
+            elif component[3] == "pt":
+                pt_labeled += 1
+                if component[4] == "wrong":
+                    pt_fp += 1
+
+            if component[4] == "correct":
+                correct_tweet += 1
+
+    print(total_tweet,eu_tweet,ca_tweet,gl_tweet,es_tweet,en_tweet,pt_tweet)
+    print(total_tweet,eu_labeled,ca_labeled,gl_labeled,es_labeled,en_labeled,pt_labeled)
+    print(total_tweet,eu_tp,ca_tp,gl_tp,es_tp,en_tp,pt_tp)
+    print(total_tweet, eu_fp, ca_fp, gl_fp, es_fp, en_fp, pt_fp)
+    print("correct:", correct_tweet)
+
+    # accuracy
+    acc = correct_tweet / total_tweet
+
+    # precision
+    eu_p = eu_tp / (eu_tp + eu_fp)
+    ca_p = ca_tp / (ca_tp + ca_fp)
+    gl_p = gl_tp / (gl_tp + gl_fp)
+    es_p = es_tp / (es_tp + es_fp)
+    en_p = en_tp / (en_tp + en_fp)
+    pt_p = pt_tp / (pt_tp + pt_fp)
+
+    # recall
+    eu_r = eu_tp / eu_tweet
+    ca_r = ca_tp / ca_tweet
+    gl_r = gl_tp / gl_tweet
+    es_r = es_tp / es_tweet
+    en_r = en_tp / en_tweet
+    pt_r = pt_tp / pt_tweet
+
+    # f1-measure
+    if eu_p + eu_r != 0:
+        eu_f1 = 2 * eu_p * eu_r / (eu_p + eu_r)
+    else:
+        eu_f1 = "N/A"
+    if ca_p + ca_r != 0:
+        ca_f1 = 2 * ca_p * ca_r / (ca_p + ca_r)
+    else:
+        ca_f1 = "N/A"
+    if gl_p + gl_r != 0:
+        gl_f1 = 2 * gl_p * gl_r / (gl_p + gl_r)
+    else:
+        gl_f1 = "N/A"
+    if es_p + es_r != 0:
+        es_f1 = 2 * es_p * es_r / (es_p + es_r)
+    else:
+        es_f1 = "N/A"
+    if en_p + en_r != 0:
+        en_f1 = 2 * en_p * en_r / (en_p + en_r)
+    else:
+        en_f1 = "N/A"
+    if pt_p + pt_r != 0:
+        pt_f1 = 2 * pt_p * pt_r / (pt_p + pt_r)
+    else:
+        pt_f1 = "N/A"
+
+    # macro-f1
+    if eu_f1 != "N/A" and ca_f1 != "N/A" and gl_f1 != "N/A" and es_f1 != "N/A" and en_f1 != "N/A" and pt_f1 != "N/A":
+        macro_f1=(eu_f1 + ca_f1 + gl_f1 + es_f1 + en_f1 + pt_f1)/6
+    else:
+        macro_f1 = "N/A"
+
+    # weighed-average-f1
+    if eu_f1 != "N/A" and ca_f1 != "N/A" and gl_f1 != "N/A" and es_f1 != "N/A" and en_f1 != "N/A" and pt_f1 != "N/A":
+        weighed_average_f1 = (eu_tweet * eu_f1 + ca_tweet * ca_f1 + gl_tweet * gl_f1 + es_tweet * es_f1 + en_tweet * en_f1 + pt_tweet * pt_f1) / total_tweet
+    else:
+        weighed_average_f1 = "N/A"
+
+    print(str(acc) + "\n"
+            + str(eu_p) + "  " + str(ca_p) + "  " + str(gl_p) + "  " + str(es_p) + "  " + str(en_p) + "  " + str(pt_p)+ "  " + "\n"
+            + str(eu_r) + "  " + str(ca_r) + "  " + str(gl_r) + "  " + str(es_r) + "  " + str(en_r )+ "  " + str(pt_r) + "  " + "\n"
+            + str(eu_f1) + "  " + str(ca_f1) + "  " + str(gl_f1) + "  " + str(es_f1) + "  " + str(en_f1) + "  " + str(pt_f1) + "  " + "\n"
+            + str(macro_f1) + "  " + str(weighed_average_f1))
+
+    with open("eval_" + str(V) + "_" + str(n) + "_" + str(gamma) + ".txt", "w", encoding="utf-8",) as f:
+        f.write(
+            str(acc) + "\n"
+            + str(eu_p) + "  " + str(ca_p) + "  " + str(gl_p) + "  " + str(es_p) + "  " + str(en_p) + "  " + str(
+                pt_p) + "  " + "\n"
+            + str(eu_r) + "  " + str(ca_r) + "  " + str(gl_r) + "  " + str(es_r) + "  " + str(en_r) + "  " + str(
+                pt_r) + "  " + "\n"
+            + str(eu_f1) + "  " + str(ca_f1) + "  " + str(gl_f1) + "  " + str(es_f1) + "  " + str(en_f1) + "  " + str(
+                pt_f1) + "  " + "\n"
+            + str(macro_f1) + "  " + str(weighed_average_f1)
         )
 
 
