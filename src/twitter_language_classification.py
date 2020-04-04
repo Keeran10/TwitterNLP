@@ -7,6 +7,7 @@ from itertools import product
 import string
 import time
 
+
 class TwitterPost:
     def __init__(self, id, username, language, tweet):
         self.id = id
@@ -17,12 +18,14 @@ class TwitterPost:
 
 # Serves as an interface to call appropriate models
 def executeNaiveBayesClassification(V, n, gamma, training, testing):
+  
     twitter_posts = processData(training)
     stop_words_toggle = False
     print_toggle = False
 
     for t in twitter_posts:        
         t.tweet = tweet_preprocess(t, stop_words_toggle, print_toggle)
+
     executeNgram(V, gamma, n, twitter_posts, testing)
 
 # fetch and stores training/testing data in list
@@ -73,6 +76,7 @@ def tweet_preprocess(t, stop_words_toggle, print_toggle):
         f.write(processed_tweet+"\n")
     return processed_tweet
 
+
 def executeNgram(V, gamma, n, training, testing):
     testingData = processData(testing)
 
@@ -88,6 +92,7 @@ def executeNgram(V, gamma, n, training, testing):
         writeToTraceFile(t, language, probability, V, n, gamma)
 
 
+
 def buildNgramModelByVocabulary(V, twitter_posts, gamma, n):
 
     if V == 0:
@@ -99,6 +104,7 @@ def buildNgramModelByVocabulary(V, twitter_posts, gamma, n):
         es_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)]))  # Spanish
         en_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)]))  # English
         pt_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_lowercase, repeat=n)])) # Portuguese
+
         # print(len(pt_n_gram_dict))
     elif V == 1:
         pattern = re.compile("[A-Za-z]")
@@ -109,6 +115,7 @@ def buildNgramModelByVocabulary(V, twitter_posts, gamma, n):
         es_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # Spanish
         en_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # English
         pt_n_gram_dict = dict(map(lambda x: (x,0), [''.join(x) for x in product(string.ascii_letters, repeat=n)]))  # Portuguese
+
         # print(len(pt_n_gram_dict))
     elif V == 2:
         pattern = None
@@ -269,6 +276,7 @@ def ngramCalculateProbability(target_language_p, twitterPost, V, n):
     return p
     
 
+
 # writes final answers in trace file
 def writeToTraceFile(twitterPost, language, probability, V, n, gamma):
 
@@ -321,6 +329,7 @@ def main():
     # training = os.path.join(sys.path[0], "training-tweets.txt")
     # testing = os.path.join(sys.path[0], "test-tweets-given.txt")
     # executeNaiveBayesClassification(V, n, gamma, training, testing)
+
 
 
 if __name__ == "__main__":
