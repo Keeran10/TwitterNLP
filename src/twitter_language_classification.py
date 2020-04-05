@@ -15,7 +15,7 @@ class TwitterPost:
 
 
 # Serves as an interface to call appropriate models
-def executeNaiveBayesClassification(V, n, gamma, training, testing):
+def executeNaiveBayesClassification(V, n, gamma, training, testing):  
     twitter_posts = processData(training)
     if V == 3:
         # main idea: only keep stopwords in tweets.
@@ -288,9 +288,9 @@ def detectTweetNgram(V, twitterPost, eu_p, ca_p, gl_p, es_p, en_p, pt_p, languag
 
 
 def ngramCalculateProbability(target_language_p, twitterPost, V, n):
+    p = 0
     if V == 0:
         tweet = twitterPost.tweet.lower()
-        p = 0
         for i in range(len(tweet)-n):
             ngram = tweet[i:i+n]
             if ngram in target_language_p.keys():
@@ -302,7 +302,6 @@ def ngramCalculateProbability(target_language_p, twitterPost, V, n):
         
     if V == 1 or V == 3:
         tweet = twitterPost.tweet
-        p = 0
         for i in range(len(tweet)-n):
             ngram = tweet[i:i+n]
             if ngram in target_language_p.keys():
@@ -312,7 +311,6 @@ def ngramCalculateProbability(target_language_p, twitterPost, V, n):
                     p += math.log(target_language_p[ngram])
     if V == 2:
         tweet = twitterPost.tweet
-        p = 0
         for i in range(len(tweet)-n):
             ngram = tweet[i:i+n]
             if ngram.isalpha() is True:
@@ -378,6 +376,7 @@ def main():
     training = os.path.join(sys.path[0], "training-tweets.txt")
     testing = os.path.join(sys.path[0], "test-tweets-given.txt")
     executeNaiveBayesClassification(V, n, gamma, training, testing)
+
 
 
 if __name__ == "__main__":
