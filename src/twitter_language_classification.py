@@ -410,7 +410,7 @@ def main():
     
     # BYOM
     V=3
-    n=2
+    n=3
     gamma = 0.1
     print("BYOM")
     # print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
