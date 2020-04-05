@@ -19,7 +19,7 @@ def executeNaiveBayesClassification(V, n, gamma, training, testing):
     twitter_posts = processData(training)
     if V == 3:
         # main idea: only keep stopwords in tweets.
-        stop_words_toggle = True
+        stop_words_toggle = False
         print_toggle = False
         # language is unkown in test set, if one word is in any of 6 stopwords set, it is kept in the tweet. In training set, only the words that are in the stopwords set of their own language are kept.
         is_test = False
@@ -104,7 +104,7 @@ def executeNgram(V, gamma, n, training, testing):
         real_label = t.language
         total_test_tweets += 1
         if V == 3:    
-            stop_words_toggle = True
+            stop_words_toggle = False
             print_toggle = False
             is_test = True
             t.tweet = tweet_preprocess(t, stop_words_toggle, print_toggle, is_test)
@@ -118,7 +118,7 @@ def executeNgram(V, gamma, n, training, testing):
             TP_counts[prediction] += 1
         writeToTraceFile(t, prediction, probability, V, n, gamma)
         
-    accuracy = total_correct/total_test_tweets
+    accuracy = '{:.4f}'.format(total_correct/total_test_tweets)
     precision_dict = {"eu":0,"ca":0,"gl":0,"es":0,"en":0,"pt":0}
     recall_dict = {"eu":0,"ca":0,"gl":0,"es":0,"en":0,"pt":0}
     f1_dict = {"eu":0,"ca":0,"gl":0,"es":0,"en":0,"pt":0}
@@ -148,16 +148,30 @@ def executeNgram(V, gamma, n, training, testing):
         else:
             macro_f1 = macro_f1 + f1_dict[key]/len(f1_dict)
             weighted_f1 = weighted_f1 + f1_dict[key]*real_label_counts[key]/total_test_tweets
+    
+    if macro_f1 is not None:        
+        macro_f1 = '{:.4f}'.format(macro_f1)
+    if weighted_f1 is not None:
+        weighted_f1 = '{:.4f}'.format(weighted_f1)
+    for k in precision_dict.keys():
+        if precision_dict[k] is not None:
+            precision_dict[k] = '{:.4f}'.format(precision_dict[k])
+    for k in recall_dict.keys():
+        if recall_dict[k] is not None:
+            recall_dict[k] = '{:.4f}'.format(recall_dict[k])
+    for k in f1_dict.keys():
+        if f1_dict[k] is not None:
+            f1_dict[k] = '{:.4f}'.format(f1_dict[k])
 
     with open("eval_" + str(V) + "_" + str(n) + "_" + str(gamma) + ".txt", "w", encoding="utf-8",) as f:
         f.write(
             str(accuracy) + "\n"
             + str(precision_dict["eu"]) + "  " + str(precision_dict["ca"]) + "  " + str(precision_dict["gl"]) + "  " + str(precision_dict["es"]) + "  " + str(precision_dict["en"]) + "  " + str(
-                precision_dict["pt"]) + "  " + "\n"
+                precision_dict["pt"]) + "\n"
             + str(recall_dict["eu"]) + "  " + str(recall_dict["ca"]) + "  " + str(recall_dict["gl"]) + "  " + str(recall_dict["es"]) + "  " + str(recall_dict["en"]) + "  " + str(
-                recall_dict["pt"]) + "  " + "\n"
+                recall_dict["pt"]) + "\n"
             + str(f1_dict["eu"]) + "  " + str(f1_dict["ca"]) + "  " + str(f1_dict["gl"]) + "  " + str(f1_dict["es"]) + "  " + str(f1_dict["en"]) + "  " + str(
-                f1_dict["pt"]) + "  " + "\n"
+                f1_dict["pt"]) + "\n"
             + str(macro_f1) + "  " + str(weighted_f1)
         )
 
@@ -212,7 +226,6 @@ def buildNgramModelByVocabulary(V, twitter_posts, gamma, n):
         if twitter_post.language == "pt":
             language_probability['pt'] = language_probability['pt'] + 1
             buildNgramLanguageModel(pt_n_gram_dict, twitter_post, V, n) 
-
     for key, value in language_probability.items():
         language_probability[key] = math.log(value / total_tweets) # list: [log(probability of a language showing up)]
     if V == 2:
@@ -229,7 +242,6 @@ def buildNgramModelByVocabulary(V, twitter_posts, gamma, n):
     es_ngram_probability = NgramConditionalProbability(es_n_gram_dict, gamma)
     en_ngram_probability = NgramConditionalProbability(en_n_gram_dict, gamma)
     pt_ngram_probability = NgramConditionalProbability(pt_n_gram_dict, gamma)
-
     return (eu_ngram_probability, ca_ngram_probability, gl_ngram_probability, es_ngram_probability, en_ngram_probability, pt_ngram_probability, language_probability)
 
 def buildNgramLanguageModel(ngram_dict, twitter_post, V, n):
@@ -240,6 +252,7 @@ def buildNgramLanguageModel(ngram_dict, twitter_post, V, n):
             ngram = tweet[i:i+n] # get an ngram, "a", "aa", or "aaa"
             if ngram in ngram_dict.keys():
                 ngram_dict[ngram] += 1
+            
 
 
     if V == 1 or V == 3:
@@ -261,15 +274,14 @@ def buildNgramLanguageModel(ngram_dict, twitter_post, V, n):
                     ngram_dict[ngram] = 1
 
 def NgramConditionalProbability(ngram_dict, gamma):
-    if gamma != 0 and gamma <= 1:
-        total_ngram = len(ngram_dict)
+    total_ngram = len(ngram_dict)
 
-        total_instance = 0
-        for key, value in ngram_dict.items():
-            total_instance = total_instance + value
-        for key, value in ngram_dict.items():
-            ngram_dict[key] = (value + gamma)/(total_instance + gamma*total_ngram)
-            
+    total_instance = 0
+    for key, value in ngram_dict.items():
+        total_instance = total_instance + value
+    for key, value in ngram_dict.items():
+        ngram_dict[key] = (value + gamma)/(total_instance + gamma*total_ngram)
+
     return ngram_dict
 
 def detectTweetNgram(V, twitterPost, eu_p, ca_p, gl_p, es_p, en_p, pt_p, language_p, n):
@@ -363,16 +375,45 @@ def uprint(*objects, sep=" ", end="\n", file=sys.stdout):
 
 
 def main():
-    for V in range(3):
-        for n in range(1,4):
-            gamma = 0.1
-            print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
-            training = os.path.join(sys.path[0], "training-tweets.txt")
-            testing = os.path.join(sys.path[0], "test-tweets-given.txt")
-            executeNaiveBayesClassification(V, n, gamma, training, testing)
+
+    V=0
+    n=1
+    gamma = 0
+    print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
+    training = os.path.join(sys.path[0], "training-tweets.txt")
+    testing = os.path.join(sys.path[0], "test-tweets-given.txt")
+    executeNaiveBayesClassification(V, n, gamma, training, testing)
+
+    V=1
+    n=2
+    gamma = 0.5
+    print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
+    training = os.path.join(sys.path[0], "training-tweets.txt")
+    testing = os.path.join(sys.path[0], "test-tweets-given.txt")
+    executeNaiveBayesClassification(V, n, gamma, training, testing)
+
+    V=1
+    n=3
+    gamma = 1
+    print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
+    training = os.path.join(sys.path[0], "training-tweets.txt")
+    testing = os.path.join(sys.path[0], "test-tweets-given.txt")
+    executeNaiveBayesClassification(V, n, gamma, training, testing)
+
+    V=2
+    n=2
+    gamma = 0.3
+    print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
+    training = os.path.join(sys.path[0], "training-tweets.txt")
+    testing = os.path.join(sys.path[0], "test-tweets-given.txt")
+    executeNaiveBayesClassification(V, n, gamma, training, testing)
+    
+    # BYOM
     V=3
     n=2
     gamma = 0.1
+    print("BYOM")
+    # print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
     training = os.path.join(sys.path[0], "training-tweets.txt")
     testing = os.path.join(sys.path[0], "test-tweets-given.txt")
     executeNaiveBayesClassification(V, n, gamma, training, testing)
