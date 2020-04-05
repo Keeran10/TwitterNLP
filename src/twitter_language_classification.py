@@ -365,13 +365,13 @@ def uprint(*objects, sep=" ", end="\n", file=sys.stdout):
 
 
 def main():
-    # for V in range(3):
-    #     for n in range(1,4):
-    #         gamma = 0.1
-    #         print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
-    #         training = os.path.join(sys.path[0], "training-tweets.txt")
-    #         testing = os.path.join(sys.path[0], "test-tweets-given.txt")
-    #         executeNaiveBayesClassification(V, n, gamma, training, testing)
+    for V in range(3):
+        for n in range(1,4):
+            gamma = 0.1
+            print("V=%d, n=%d, gamma=%f" % (V,n,gamma))
+            training = os.path.join(sys.path[0], "training-tweets.txt")
+            testing = os.path.join(sys.path[0], "test-tweets-given.txt")
+            executeNaiveBayesClassification(V, n, gamma, training, testing)
     V=3
     n=2
     gamma = 0.1
