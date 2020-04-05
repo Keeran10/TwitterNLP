@@ -9,7 +9,7 @@ Program to detect language of various tweets through Naive Bayes classification 
 2) Download or clone this repository.
 3) Open linux terminal and `cd` into the downloaded directory.
 4) Execute command `module load anaconda3` to use Python 3.7.
-5) Execute command `python3 main.py` to run program on a provided test.txt.
+5) Execute command `python3 twitter_language_classification.py` to run program on a provided test.txt.
 
 
 ### Contributors
